@@ -1,0 +1,124 @@
+#!/usr/bin/env node
+/**
+ * 
+ */
+
+const program = require('commander')
+const inquirer = require('inquirer')
+const generate = require('../lib/generate')
+const homedir = require('os').homedir()
+const fs = require('fs')
+const path = require('path')
+const svnUltimate = require('node-svn-ultimate')
+const ora = require('ora')
+
+program
+  .version('1.0.0')
+  .usage('<projectName> [templateName]')
+  .option('--offline', '使用缓存的模版')
+  .action(async (projectName, ...args) => {
+    if (!projectName) {
+      return console.log('缺少项目名')
+    }
+
+    try {
+      fs.accessSync(path.join(process.cwd(), projectName))
+      return console.log(`${projectName} 目录已存在，任务取消`)
+    } catch (error) {
+    }
+
+    let template
+    let cmd = {}
+    args.forEach(arg => {
+      if (typeof arg === 'string') {
+        template = path.join(homedir, '.pc-templates', arg)
+      }
+      if (typeof arg === 'object') {
+        cmd = arg
+      }
+    })
+
+    if (!template) {
+      let templateList
+      try {
+        templateList = await getTemplateList(cmd.offline)
+      } catch (error) {
+        return console.log('使用离线模式前请先将下载模版')
+      }
+
+      const { templateName } = await inquirer.prompt([{
+        type: 'list',
+        name: 'templateName',
+        message: '请选择模版',
+        choices: templateList
+      }])
+
+      template = path.join(homedir, '.pc-templates', templateName)
+
+      if (!cmd.offline) {
+        const svnUrl = `http://67.230.176.233/svn/repo/pc-templates/${templateName}`
+        await downloadSvnTemplate(svnUrl, template)
+      }
+    }
+
+    generate(projectName, template)
+  })
+
+program
+  .command('haha <dir>')
+  .action((dir) => {
+    console.log('dddir', dir)
+  })
+
+function getTemplateList (offline) {
+  return new Promise((resolve, reject) => {
+    const spinner = ora('Loading unicorns').start()
+
+    spinner.text = '正在获取模版列表....'
+    const templateDir = path.join(homedir, '/.pc-templates')
+    if (offline) {
+      try {
+        const templates = fs.readdirSync(templateDir)
+        spinner.stop()
+        resolve(templates)
+      } catch (error) {
+        reject(error)
+      }
+    } else {
+      svnUltimate.commands.list('http://67.230.176.233/svn/repo/pc-templates', {
+        username: 'vdorchan',
+        password: '000123456'
+      }, (err, list) => {
+        if (err) {
+          // return console.log(err)
+          return reject(err)
+        }
+        // console.log(list.list)
+        spinner.stop()
+        resolve(list.list.entry.map(f => f.name))
+      })
+    }
+  })
+}
+
+function downloadSvnTemplate (svnUrl, templatePath) {
+  return new Promise((resolve, reject) => {
+    svnUltimate.commands.export(
+      svnUrl,
+      templatePath,
+      {
+        username: 'vdorchan',
+        password: '000123456',
+        force: true
+      },
+      (err) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+  })
+}
+
+program.parse(process.argv)
