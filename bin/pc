@@ -1,20 +1,24 @@
 #!/usr/bin/env node
-/**
- * 
- */
 
 const program = require('commander')
 const inquirer = require('inquirer')
-const generate = require('../lib/generate')
 const homedir = require('os').homedir()
 const fs = require('fs')
 const path = require('path')
-const svnUltimate = require('node-svn-ultimate')
 const ora = require('ora')
+const { promisify: pify } = require('util')
+const chalk = require('chalk')
+const generate = require('../lib/generate')
+const {
+  svnUrl,
+  svnExport,
+  svnList,
+  svnCat
+} = require('../lib/svn')
 
 program
-  .version('1.0.0')
-  .usage('<projectName> [templateName]')
+  .version(require('../package.json').version, '-v --version')
+  .usage('[options] <projectName> [templateName]')
   .option('--offline', '使用缓存的模版')
   .action(async (projectName, ...args) => {
     if (!projectName) {
@@ -22,8 +26,14 @@ program
     }
 
     try {
-      fs.accessSync(path.join(process.cwd(), projectName))
-      return console.log(`${projectName} 目录已存在，任务取消`)
+      const projectDir = path.join(process.cwd(), projectName)
+      fs.accessSync(projectDir)
+      const answer = await inquirer.prompt([{ name: 'override', type: 'confirm', default: false, message: `${projectName} 目录已存在，是否覆盖？` }])
+      if (answer.override) {
+        fs.rmdirSync(projectDir)
+      } else {
+        return ora().fail('你拒绝了覆盖，任务取消！')
+      }
     } catch (error) {
     }
 
@@ -39,25 +49,22 @@ program
     })
 
     if (!template) {
-      let templateList
       try {
-        templateList = await getTemplateList(cmd.offline)
+        const templateList = await getTemplateList(cmd.offline)
+        const { templateName } = await inquirer.prompt([{
+          type: 'list',
+          name: 'templateName',
+          message: '请选择模版',
+          choices: templateList
+        }])
+
+        template = path.join(homedir, '.pc-templates', templateName)
+
+        if (!cmd.offline) {
+          await downloadSvnTemplate(svnUrl(`pc-templates/${templateName}`), template)
+        }
       } catch (error) {
-        return console.log('使用离线模式前请先将下载模版')
-      }
-
-      const { templateName } = await inquirer.prompt([{
-        type: 'list',
-        name: 'templateName',
-        message: '请选择模版',
-        choices: templateList
-      }])
-
-      template = path.join(homedir, '.pc-templates', templateName)
-
-      if (!cmd.offline) {
-        const svnUrl = `http://67.230.176.233/svn/repo/pc-templates/${templateName}`
-        await downloadSvnTemplate(svnUrl, template)
+        console.log(error)
       }
     }
 
@@ -65,60 +72,116 @@ program
   })
 
 program
-  .command('haha <dir>')
-  .action((dir) => {
-    console.log('dddir', dir)
-  })
-
-function getTemplateList (offline) {
-  return new Promise((resolve, reject) => {
-    const spinner = ora('Loading unicorns').start()
-
-    spinner.text = '正在获取模版列表....'
-    const templateDir = path.join(homedir, '/.pc-templates')
-    if (offline) {
+  .command('template [command]')
+  .description('查看所有模版')
+  .option('--offline', '查看离线模版列表')
+  .action(async (command) => {
+    let header
+    let templateList
+    if (command === 'update') {
+      const spinner = ora('正在更新模版列表').start()
       try {
-        const templates = fs.readdirSync(templateDir)
-        spinner.stop()
-        resolve(templates)
+        await downloadTemplateList()
+        spinner.succeed('模版列表更新完成')
       } catch (error) {
-        reject(error)
+        spinner.fail('模版更新失败')
+      }
+      header = '离线模版列表：'
+
+      try {
+        templateList = await getOfflineTemplateList()
+      } catch (error) {
+        console.log(error)
       }
     } else {
-      svnUltimate.commands.list('http://67.230.176.233/svn/repo/pc-templates', {
-        username: 'vdorchan',
-        password: '000123456'
-      }, (err, list) => {
-        if (err) {
-          // return console.log(err)
-          return reject(err)
-        }
-        // console.log(list.list)
-        spinner.stop()
-        resolve(list.list.entry.map(f => f.name))
-      })
+      const spinner = ora('正在获取模版列表').start()
+      if (program.offline) {
+        header = '离线模版列表：'
+        templateList = await getOfflineTemplateList()
+      } else {
+        templateList = await getSvnTemplateList()
+        header = '线上模版列表:'
+      }
+      spinner.stop()
+    }
+
+    if (header && templateList) {
+      console.log(chalk.green(header))
+      console.log(`· ${templateList.map(tpl => tpl.name).join('\n· ')}`)
     }
   })
-}
 
-function downloadSvnTemplate (svnUrl, templatePath) {
-  return new Promise((resolve, reject) => {
-    svnUltimate.commands.export(
-      svnUrl,
-      templatePath,
-      {
-        username: 'vdorchan',
-        password: '000123456',
-        force: true
-      },
-      (err) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve()
-        }
-      })
+program
+  .command('update')
+  .description('升级 pcgroup-cli')
+  .action(async (cmd) => {
+
   })
-}
 
 program.parse(process.argv)
+
+async function getTemplateList (offline) {
+  const spinner = ora('正在获取模版列表').start()
+
+  const templateList = offline ? (await getOfflineTemplateList()) : (await getSvnTemplateList())
+
+  spinner.stop()
+
+  return templateList
+}
+
+async function downloadTemplateList () {
+  return svnExport(svnUrl('pc-templates'), path.join(homedir, '/.pc-templates'), { force: true })
+}
+
+function makeTemplateList (templateList, listDesc = {}) {
+  return templateList.map(tpl => ({
+    name: `${tpl} ${chalk.gray(listDesc[tpl] || '')}`,
+    value: tpl,
+    short: tpl
+  }))
+}
+
+async function getOfflineTemplateList () {
+  const templateDir = path.join(homedir, '/.pc-templates')
+
+  let templateList, listDesc
+  try {
+    [templateList, listDesc] = await Promise.all([
+      pify(fs.readdir)(templateDir),
+      pify(fs.readFile)(path.join(templateDir, 'list.json'), 'utf-8')
+    ])
+  } catch (error) {
+  }
+
+  if (typeof listDesc === 'string') {
+    listDesc = JSON.parse(listDesc)
+  }
+
+  return makeTemplateList(templateList, listDesc)
+}
+
+async function getSvnTemplateList () {
+  let [list, listDesc] = await Promise.all([
+    svnList(svnUrl('pc-templates')),
+    svnCat(svnUrl('pc-templates/list.json'))
+  ])
+
+  listDesc = JSON.parse(listDesc)
+
+  const templateList = list.list.entry
+    .filter(f => f.name !== 'list.json')
+    .map(f => ({
+      name: f.name + (listDesc[f.name] ? ` ${chalk.gray(listDesc[f.name])}` : ''),
+      value: f.name,
+      short: f.name
+    }))
+
+  return templateList
+}
+
+async function downloadSvnTemplate (svnUrl, templatePath) {
+  return svnExport(svnUrl, templatePath, { force: true })
+}
+
+if (!program.args.length) program.help()
