@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "A CLI for pcgroup front-end developer to scaffolding a project.",
   "bin": {
-    "pc": "bin/pc"
+    "pcfe": "bin/pcfe"
   },
   "author": "vdorchan <vdorchan@gmail.com>",
   "dependencies": {
@@ -13,7 +13,8 @@
     "mem-fs": "^1.1.3",
     "mem-fs-editor": "^5.1.0",
     "node-svn-ultimate": "^1.1.0",
-    "ora": "^3.0.0"
+    "ora": "^3.0.0",
+    "semver": "^5.6.0"
   },
   "engines": {
     "node": ">=8"
