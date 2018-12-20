@@ -9,24 +9,32 @@ const ora = require('ora')
 const { promisify: pify } = require('util')
 const chalk = require('chalk')
 const generate = require('../lib/generate')
+const www1 = require('../lib/www1')
+const Svn = require('../lib/svn')
 const {
-  svnUrl,
-  svnExport,
-  svnList,
-  svnCat
-} = require('../lib/svn')
+  getUser,
+  generateUserConf
+} = require('../lib/userConf')
+
+const { userConf, isComplete } = getUser()
+
+const svn = new Svn(userConf)
+
 const filterTemplate = require('../lib/filterTemplate')
-const confirm = require('../lib/confirm')
+const { ask } = require('../lib/confirm')
 const semver = require('semver')
 const pkg = require('../package.json')
 const {
   fail,
-  warn
+  warn,
+  info
 } = require('../lib/logger')
 
 if (!semver.satisfies(process.version, pkg.engines.node)) {
   warn(chalk.red(`你正在使用 NODE ${process.version}，该工具要求 Node ${pkg.engines.node}，请进行升级，否则可能影响使用`))
 }
+
+const templateDir = path.join(homedir, '.pc-templates')
 
 program.option('--offline', '离线模式')
 
@@ -36,7 +44,8 @@ program
   .option('--offline', '使用离线模版')
   .option('-f --force', '覆盖已存在的项目目录')
   .action(async (projectName, ...args) => {
-    console.log(projectName, args);
+    await checkUserConf()
+
     if (!projectName) {
       return console.log('缺少项目名')
     }
@@ -44,7 +53,7 @@ program
     try {
       const projectDir = path.join(process.cwd(), projectName)
       fs.accessSync(projectDir)
-      const override = await confirm(`${projectName} 目录已存在，是否覆盖？`, false)
+      const override = await ask(`${projectName} 目录已存在，是否覆盖？`, false)
 
       if (override) {
         fs.rmdirSync(projectDir)
@@ -59,7 +68,7 @@ program
     let cmd = {}
     args.forEach(arg => {
       if (typeof arg === 'string') {
-        template = path.join(homedir, '.pc-templates', arg)
+        template = path.join(templateDir, arg)
       }
       if (typeof arg === 'object') {
         cmd = arg
@@ -79,8 +88,8 @@ program
           message: '请选择模版',
           choices: templateList
         }])
-  
-        template = path.join(homedir, '.pc-templates', templateName)
+
+        template = path.join(templateDir, templateName)
       } catch (error) {
         spinner.fail('获取不到模版！')
         return console.log(error)
@@ -95,6 +104,8 @@ program
   .description('列出模版')
   .option('--offline', '查看离线模版列表')
   .action(async (command) => {
+    await checkUserConf()
+
     let templateList
     if (command === 'update') {
       const spinner = ora('正在更新模版列表').start()
@@ -130,25 +141,42 @@ program
   })
 
 program
-  .command('update')
-  .description('升级 pcgroup-cli')
-  .action(async (cmd) => {
+  .command('www1 [file]')
+  .description('上传到www1')
+  .option('--zip', '先打包后再上传')
+  .action(async (filepath, option) => {
+    // if (!filepath) {
+    //   fail('请输入要上传的文件路径！')
+    //   program.help()
+    // }
 
+    try {
+      www1(filepath, userConf, option.zip)
+    } catch (error) {
+      fail(error)
+    }
   })
 
 program.parse(process.argv)
+
+async function checkUserConf () {
+  if (!isComplete) {
+    info('初次使用或用户信息不完整，请完善用户信息！')
+    return generateUserConf()
+  }
+}
 
 async function getTemplateList (offline) {
   return offline ? getOfflineTemplateList() : getSvnTemplateList()
 }
 
 async function downloadTemplateList () {
-  return svnExport(svnUrl('pc-tempslates'), path.join(homedir, '/.pc-templates'), { force: true })
+  return svn.export(svn.getSvnUrl('pc-tempslates'), templateDir, { force: true })
 }
 
 async function getTemplate (templateName, offline) {
   if (!offline) {
-    await svnExport(svnUrl(`pc-tempslates/${templateName}`), path.join(homedir, `/.pc-templates/${templateName}`), { force: true })
+    await svn.export(svn.getSvnUrl(`pc-tempslates/${templateName}`), path.join(templateDir, templateName), { force: true })
   }
 }
 
@@ -161,8 +189,6 @@ function makeTemplateList (templateList, listDesc = {}) {
 }
 
 async function getOfflineTemplateList () {
-  const templateDir = path.join(homedir, '/.pc-templates')
-
   fs.accessSync(templateDir)
   let templateList, listDesc
   try {
@@ -182,8 +208,8 @@ async function getOfflineTemplateList () {
 
 async function getSvnTemplateList () {
   let [list, listDesc] = await Promise.all([
-    svnList(svnUrl('pc-templates')),
-    svnCat(svnUrl('pc-templates/list.json'))
+    svn.list(svn.getSvnUrl('pc-templates')),
+    svn.cat(svn.getSvnUrl('pc-templates/list.json'))
   ])
 
   listDesc = JSON.parse(listDesc)
