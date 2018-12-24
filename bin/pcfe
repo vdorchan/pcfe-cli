@@ -5,9 +5,11 @@ const inquirer = require('inquirer')
 const homedir = require('os').homedir()
 const fs = require('fs')
 const path = require('path')
+const rimraf = require('rimraf')
 const ora = require('ora')
 const { promisify: pify } = require('util')
 const chalk = require('chalk')
+const CFonts = require('cfonts')
 const generate = require('../lib/generate')
 const www1 = require('../lib/www1')
 const Svn = require('../lib/svn')
@@ -21,7 +23,7 @@ const { userConf, isComplete } = getUser()
 const svn = new Svn(userConf)
 
 const filterTemplate = require('../lib/filterTemplate')
-const { ask } = require('../lib/confirm')
+const { choose } = require('../lib/confirm')
 const semver = require('semver')
 const pkg = require('../package.json')
 const {
@@ -43,6 +45,7 @@ program
   .usage('[options] <projectName> [templateName]')
   .option('--offline', '使用离线模版')
   .option('-f --force', '覆盖已存在的项目目录')
+  .option('-i --init', '初始化总目录')
   .action(async (projectName, ...args) => {
     await checkUserConf()
 
@@ -53,10 +56,10 @@ program
     try {
       const projectDir = path.join(process.cwd(), projectName)
       fs.accessSync(projectDir)
-      const override = await ask(`${projectName} 目录已存在，是否覆盖？`, false)
+      const override = await choose(`${projectName} 目录已存在，是否覆盖？`, '覆盖', false)
 
       if (override) {
-        fs.rmdirSync(projectDir)
+        await pify(rimraf)(projectDir)
       } else {
         fail('你拒绝了覆盖，任务取消！')
         process.exit(1)
@@ -65,27 +68,27 @@ program
     }
 
     let template
-    let cmd = {}
+    let option = {}
     args.forEach(arg => {
       if (typeof arg === 'string') {
         template = path.join(templateDir, arg)
       }
       if (typeof arg === 'object') {
-        cmd = arg
+        option = arg
       }
     })
 
     if (template) {
-      template = await getTemplate(cmd.offline)
+      template = await getTemplate(option.offline)
     } else {
       const spinner = ora('正在获取模版列表').start()
       try {
-        const templateList = await getTemplateList(cmd.offline)
+        const templateList = await getTemplateList(option.offline)
         spinner.stop()
         const { templateName } = await inquirer.prompt([{
           type: 'list',
           name: 'templateName',
-          message: '请选择模版',
+          message: `正在创建 ${chalk.magenta(projectName)} 项目，请选择模版`,
           choices: templateList
         }])
 
@@ -96,7 +99,7 @@ program
       }
     }
 
-    generate(projectName, template)
+    generate(projectName, template, userConf, option)
   })
 
 program
@@ -157,6 +160,14 @@ program
     }
   })
 
+program.on('--help', () => {
+  console.log('')
+  console.log('Examples:')
+  console.log('')
+  console.log('  $ custom-help --help')
+  console.log('  $ custom-help -h')
+})
+
 program.parse(process.argv)
 
 async function checkUserConf () {
@@ -171,12 +182,12 @@ async function getTemplateList (offline) {
 }
 
 async function downloadTemplateList () {
-  return svn.export(svn.getSvnUrl('pc-tempslates'), templateDir, { force: true })
+  return svn.export(svn.getSvnUrl('pc-templates'), templateDir, { force: true })
 }
 
 async function getTemplate (templateName, offline) {
   if (!offline) {
-    await svn.export(svn.getSvnUrl(`pc-tempslates/${templateName}`), path.join(templateDir, templateName), { force: true })
+    await svn.export(svn.getSvnUrl(`pc-templates/${templateName}`), path.join(templateDir, templateName), { force: true })
   }
 }
 
@@ -224,4 +235,7 @@ async function getSvnTemplateList () {
   return templateList
 }
 
-if (!program.args.length) program.help()
+if (!program.args.length) {
+  CFonts.say('pcfe-cli', { colors: ['magenta'] })
+  program.help()
+}
