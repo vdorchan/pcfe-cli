@@ -45,26 +45,11 @@ program
   .usage('[options] <projectName> [templateName]')
   .option('--offline', '使用离线模版')
   .option('-f --force', '覆盖已存在的项目目录')
-  .option('-i --init', '初始化总目录')
   .action(async (projectName, ...args) => {
     await checkUserConf()
 
     if (!projectName) {
       return console.log('缺少项目名')
-    }
-
-    try {
-      const projectDir = path.join(process.cwd(), projectName)
-      fs.accessSync(projectDir)
-      const override = await choose(`${projectName} 目录已存在，是否覆盖？`, '覆盖', false)
-
-      if (override) {
-        await pify(rimraf)(projectDir)
-      } else {
-        fail('你拒绝了覆盖，任务取消！')
-        process.exit(1)
-      }
-    } catch (error) {
     }
 
     let template
@@ -77,6 +62,20 @@ program
         option = arg
       }
     })
+
+    try {
+      const projectDir = path.join(process.cwd(), projectName)
+      fs.accessSync(projectDir)
+      const override = option.force || await choose(`${projectName} 目录已存在，是否覆盖？`, '覆盖', false)
+
+      if (override) {
+        await pify(rimraf)(projectDir)
+      } else {
+        fail('你拒绝了覆盖，任务取消！')
+        process.exit(1)
+      }
+    } catch (error) {
+    }
 
     if (template) {
       template = await getTemplate(option.offline)
@@ -144,15 +143,10 @@ program
   })
 
 program
-  .command('www1 [file]')
+  .command('www1 [file...]')
   .description('上传到www1')
   .option('--zip', '先打包后再上传')
   .action(async (filepath, option) => {
-    // if (!filepath) {
-    //   fail('请输入要上传的文件路径！')
-    //   program.help()
-    // }
-
     try {
       www1(filepath, userConf, option.zip)
     } catch (error) {
@@ -194,8 +188,7 @@ async function getTemplate (templateName, offline) {
 function makeTemplateList (templateList, listDesc = {}) {
   return filterTemplate(templateList.map(tpl => ({
     name: `${tpl} ${chalk.gray(listDesc[tpl] || '')}`,
-    value: tpl,
-    short: tpl
+    value: tpl
   })))
 }
 
@@ -228,8 +221,7 @@ async function getSvnTemplateList () {
   const templateList = filterTemplate(list.list.entry
     .map(f => ({
       name: f.name + (listDesc[f.name] ? ` ${chalk.gray(listDesc[f.name])}` : ''),
-      value: f.name,
-      short: f.name
+      value: f.name
     })))
 
   return templateList
