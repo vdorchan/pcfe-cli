@@ -51,7 +51,8 @@ program
     await checkUserConf()
 
     if (!projectName) {
-      return console.log('缺少项目名')
+      fail('缺少项目名')
+      process.exit(1)
     }
 
     try {
@@ -60,7 +61,9 @@ program
       const override = cmd.force || await choose(`${projectName} 目录已存在，是否覆盖？`, '覆盖', false)
 
       if (override) {
+        const spiner = ora().start()
         await pify(rimraf)(projectDir)
+        spiner.stop()
       } else {
         fail('你拒绝了覆盖，任务取消！')
         process.exit(1)
