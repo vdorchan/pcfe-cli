@@ -22,7 +22,6 @@ const { userConf, isComplete } = getUser()
 
 const svn = new Svn(userConf)
 
-const filterTemplate = require('../lib/filterTemplate')
 const { choose } = require('../lib/confirm')
 const semver = require('semver')
 const pkg = require('../package.json')
@@ -36,37 +35,29 @@ if (!semver.satisfies(process.version, pkg.engines.node)) {
   warn(chalk.red(`你正在使用 NODE ${process.version}，该工具要求 Node ${pkg.engines.node}，请进行升级，否则可能影响使用`))
 }
 
-const templateDir = path.join(homedir, '.pc-templates')
+const TEMPLATE_DIR = path.join(homedir, '.pc-templates')
+const TEMPLATE_PREFIX = 'pcfe-'
+const TEMPLATE_REG = new RegExp(`^${TEMPLATE_PREFIX}(\\S+)`)
 
 program.option('--offline', '离线模式')
 
 program
   .version(pkg.version, '-v --version')
-  .usage('[options] <projectName> [templateName]')
-  .option('--offline', '使用离线模版')
+  .command('create <projectName> [templateName]')
+  .option('--offline', '使用离线模板')
   .option('-f --force', '覆盖已存在的项目目录')
-  .action(async (projectName, ...args) => {
+  .allowUnknownOption()
+  .action(async function (projectName, templateName, cmd) {
     await checkUserConf()
 
     if (!projectName) {
       return console.log('缺少项目名')
     }
 
-    let template
-    let option = {}
-    args.forEach(arg => {
-      if (typeof arg === 'string') {
-        template = path.join(templateDir, arg)
-      }
-      if (typeof arg === 'object') {
-        option = arg
-      }
-    })
-
     try {
-      const projectDir = path.join(process.cwd(), projectName)
+      const projectDir = path.resolve(process.cwd(), projectName)
       fs.accessSync(projectDir)
-      const override = option.force || await choose(`${projectName} 目录已存在，是否覆盖？`, '覆盖', false)
+      const override = cmd.force || await choose(`${projectName} 目录已存在，是否覆盖？`, '覆盖', false)
 
       if (override) {
         await pify(rimraf)(projectDir)
@@ -77,67 +68,70 @@ program
     } catch (error) {
     }
 
-    if (template) {
-      template = await getTemplate(option.offline)
-    } else {
-      const spinner = ora('正在获取模版列表').start()
+    let template
+    if (templateName) {
       try {
-        const templateList = await getTemplateList(option.offline)
+        template = await getTemplate(templateName)
+      } catch (error) {
+        fail(`获取 ${templateName} 模板异常，请确认模板名称或继续使用模板列表选择！`)
+      }
+    }
+
+    if (!template) {
+      const spinner = ora('正在获取模板列表').start()
+      try {
+        const templateList = await getTemplateList()
         spinner.stop()
         const { templateName } = await inquirer.prompt([{
           type: 'list',
           name: 'templateName',
-          message: `正在创建 ${chalk.magenta(projectName)} 项目，请选择模版`,
+          message: `正在创建 ${chalk.magenta(projectName)} 项目，请选择模板`,
           choices: templateList
         }])
 
-        template = path.join(templateDir, templateName)
+        template = path.join(TEMPLATE_DIR, templateName)
       } catch (error) {
-        spinner.fail('获取不到模版！')
+        spinner.fail('获取不到模板！')
         return console.log(error)
       }
     }
 
-    generate(projectName, template, userConf, option)
+    const _options = {}
+    const optionReg = /^--(\S+)/
+    const definedOptions = cmd.options.map(o => o.long)
+    const { rawArgs } = program
+    rawArgs.forEach((a, i) => {
+      if (optionReg.test(a) && !definedOptions.includes(a)) {
+        const v = rawArgs[++i]
+        _options[a.replace(optionReg, '$1')] = v && !optionReg.test(v) ? v : true
+      }
+    })
+
+    generate(projectName, template, userConf, _options)
   })
 
 program
-  .command('list [command]')
-  .description('列出模版')
-  .option('--offline', '查看离线模版列表')
-  .action(async (command) => {
+  .command('list')
+  .description('列出模板')
+  .option('--offline', '查看离线模板列表')
+  .option('-u --update', '查看模板，并更新离线模板')
+  .action(async (options) => {
     await checkUserConf()
 
-    let templateList
-    if (command === 'update') {
-      const spinner = ora('正在更新模版列表').start()
-      try {
-        await downloadTemplateList()
-        spinner.succeed('模版列表更新完成')
-      } catch (error) {
-        spinner.fail('模版更新失败')
-        process.exit(1)
-      }
+    const spinner = ora('正在获取模板列表').start()
 
-      try {
-        templateList = await getOfflineTemplateList()
-      } catch (error) {
-        templateList = []
-      }
-    } else {
-      const spinner = ora('正在获取模版列表').start()
-      const { offline } = program
-      try {
-        templateList = await getTemplateList(program.offline)
-        spinner.stop()
-      } catch (error) {
-        spinner.fail(offline ? '当前系统不存在模版' : '无法获取线上模版')
-        process.exit(1)
-      }
+    let templateList
+    try {
+      templateList = await getTemplateList()
+    } catch (error) {
+      fail(error)
+      process.exit(1)
     }
 
+    spinner.stop()
+
     if (templateList) {
-      console.log(chalk.green('模版列表：'))
+      console.log(chalk.green('模板列表：'))
       console.log(`· ${templateList.map(tpl => tpl.name).join('\n· ')}`)
     }
   })
@@ -145,10 +139,12 @@ program
 program
   .command('www1 [file...]')
   .description('上传到www1')
-  .option('--zip', '先打包后再上传')
-  .action(async (filepath, option) => {
+  .option('--ignore-config', '忽略配置文件')
+  .option('--ignore-cwd', '忽略配置文件中设置的当前工作路径')
+  .option('--ignore-dir', '忽略文件夹路径关系，所有文件将在同一路径下')
+  .action(async (filepath, options) => {
     try {
-      www1(filepath, userConf, option.zip)
+      www1(filepath, userConf, options)
     } catch (error) {
       fail(error)
     }
@@ -164,65 +160,67 @@ program.on('--help', () => {
 
 program.parse(process.argv)
 
-async function checkUserConf () {
+function checkUserConf () {
   if (!isComplete) {
     info('初次使用或用户信息不完整，请完善用户信息！')
     return generateUserConf()
   }
 }
 
-async function getTemplateList (offline) {
-  return offline ? getOfflineTemplateList() : getSvnTemplateList()
-}
-
-async function downloadTemplateList () {
-  return svn.export(svn.getSvnUrl('pc-templates'), templateDir, { force: true })
-}
-
-async function getTemplate (templateName, offline) {
-  if (!offline) {
-    await svn.export(svn.getSvnUrl(`pc-templates/${templateName}`), path.join(templateDir, templateName), { force: true })
-  }
-}
-
-function makeTemplateList (templateList, listDesc = {}) {
-  return filterTemplate(templateList.map(tpl => ({
-    name: `${tpl} ${chalk.gray(listDesc[tpl] || '')}`,
-    value: tpl
-  })))
-}
-
-async function getOfflineTemplateList () {
-  fs.accessSync(templateDir)
-  let templateList, listDesc
+async function getTemplate (templateName, offline = program.offline) {
+  if (!TEMPLATE_REG.test(templateName)) templateName = TEMPLATE_PREFIX + templateName
+  const template = path.resolve(TEMPLATE_DIR, templateName)
   try {
-    [templateList, listDesc] = await Promise.all([
-      pify(fs.readdir)(templateDir),
-      pify(fs.readFile)(path.join(templateDir, 'list.json'), 'utf-8')
-    ])
+    if (!offline) {
+      await svn.export(svn.getSvnUrl(`pc-templates/${templateName}`), template, { force: true })
+    }
+
+    fs.accessSync(template)
   } catch (error) {
+    error.message = `获取 ${templateName} 模板异常` + error.message
+    throw error
   }
-
-  if (typeof listDesc === 'string') {
-    listDesc = JSON.parse(listDesc)
-  }
-
-  return makeTemplateList(templateList, listDesc)
+  return template
 }
 
-async function getSvnTemplateList () {
-  let [list, listDesc] = await Promise.all([
-    svn.list(svn.getSvnUrl('pc-templates')),
-    svn.cat(svn.getSvnUrl('pc-templates/list.json'))
-  ])
+async function getTemplateList (offline = program.offline) {
+  let templateList, templateDesc
+  if (offline) {
+    try {
+      // fs.accessSync(TEMPLATE_DIR)
+      [templateList, templateDesc] = await Promise.all([
+        pify(fs.readdir)(TEMPLATE_DIR),
+        pify(fs.readFile)(path.join(TEMPLATE_DIR, 'list.json'), 'utf-8')
+      ])
+    } catch (error) {
+      error.message = '获取本地模板出错，请使用线上模式或尝试更新模板\n' + error.message
+      throw error
+    }
+  } else {
+    try {
+      let list
+      [list, templateDesc] = await Promise.all([
+        svn.list(svn.getSvnUrl('pc-templates')),
+        svn.cat(svn.getSvnUrl('pc-templates/list.json'))
+      ])
+      templateList = list.list.entry.map(f => f.name)
+    } catch (error) {
+      error.message = '获取线上模板失败\n' + error.message
+      throw error
+    }
+  }
 
-  listDesc = JSON.parse(listDesc)
+  templateList = templateList.filter(t => TEMPLATE_REG.test(t))
+  try {
+    templateDesc = JSON.parse(templateDesc)
+  } catch (error) {
+    templateDesc = {}
+  }
 
-  const templateList = filterTemplate(list.list.entry
-    .map(f => ({
-      name: f.name + (listDesc[f.name] ? ` ${chalk.gray(listDesc[f.name])}` : ''),
-      value: f.name
-    })))
+  templateList = templateList.map(t => ({
+    name: t.replace(TEMPLATE_REG, '$1') + (templateDesc[t] ? ` ${chalk.gray(templateDesc[t])}` : ''),
+    value: t
+  }))
 
   return templateList
 }
