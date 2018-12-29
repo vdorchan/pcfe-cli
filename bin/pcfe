@@ -12,15 +12,8 @@ const chalk = require('chalk')
 const CFonts = require('cfonts')
 const generate = require('../lib/generate')
 const www1 = require('../lib/www1')
-const Svn = require('../lib/svn')
-const {
-  getUser,
-  generateUserConf
-} = require('../lib/userConf')
-
-const { userConf, isComplete } = getUser()
-
-const svn = new Svn(userConf)
+const svn = require('../lib/svn')
+const userConfApi = require('../lib/userConfApi')
 
 const { choose } = require('../lib/confirm')
 const semver = require('semver')
@@ -38,6 +31,8 @@ if (!semver.satisfies(process.version, pkg.engines.node)) {
 const TEMPLATE_DIR = path.join(homedir, '.pc-templates')
 const TEMPLATE_PREFIX = 'pcfe-'
 const TEMPLATE_REG = new RegExp(`^${TEMPLATE_PREFIX}(\\S+)`)
+
+let userConf
 
 program.option('--offline', '离线模式')
 
@@ -99,16 +94,9 @@ program
       }
     }
 
-    const _options = {}
-    const optionReg = /^--(\S+)/
     const definedOptions = cmd.options.map(o => o.long)
-    const { rawArgs } = program
-    rawArgs.forEach((a, i) => {
-      if (optionReg.test(a) && !definedOptions.includes(a)) {
-        const v = rawArgs[++i]
-        _options[a.replace(optionReg, '$1')] = v && !optionReg.test(v) ? v : true
-      }
-    })
+
+    const _options = getArgOptions(program.rawArgs, definedOptions)
 
     generate(projectName, template, userConf, _options)
   })
@@ -153,6 +141,18 @@ program
     }
   })
 
+program
+  .command('user')
+  .description('修改用户配置文件')
+  .on('--help', () => {
+    console.log('')
+    console.log('Command:')
+    console.log('  check              验证账号是否正确')
+    console.log('  check --svn        验证 svn 账号是否正确')
+    console.log('  reset              重设用户配置')
+    console.log('  set <key> <value>  设定某个参数为新的值')
+  })
+
 program.on('--help', () => {
   console.log('')
   console.log('Examples:')
@@ -163,11 +163,53 @@ program.on('--help', () => {
 
 program.parse(process.argv)
 
-function checkUserConf () {
+if (['user', 'u'].includes(program.args[0])) {
+  const { args } = program
+  const rawArgs = program.rawArgs.slice(2).filter(a => !args.includes(a))
+
+  const options = getArgOptions(rawArgs)
+
+  const fun = userConfApi[args[1]]
+
+  const outHelp = function (err) {
+    err && fail(err.message)
+    console.log(`pcfe user set <key> <value>           设置用户配置中指定参数的指
+pcfe user get <key>                   获取用户配置中指定参数的指
+pcfe user delete <key>                删除用户配置中指定参数的指
+pcfe user list                        展示用户配置
+pcfe user check [--svn] [--no-store]  验证账号或 svn 账号是否正确,正确时默认自动存储
+pcfe user reset                       对用户配置进行重设`)
+    process.exit(1)
+  }
+
+  if (typeof fun !== 'function') {
+    outHelp()
+  }
+
+  fun.apply(userConf, [...args.slice(2), options]).catch(outHelp)
+}
+
+function getArgOptions (args, ignoreOptions = []) {
+  const optionReg = /^--(\S+)/
+  const options = {}
+  args.forEach((a, i) => {
+    if (optionReg.test(a) && !ignoreOptions.includes(a)) {
+      const v = args[++i]
+      options[a.replace(optionReg, '$1')] = v && !optionReg.test(v) ? v : true
+    }
+  })
+  return options
+}
+
+async function checkUserConf () {
+  let { userConf: _userConf, isComplete } = userConfApi.getUser()
   if (!isComplete) {
     info('初次使用或用户信息不完整，请完善用户信息！')
-    return generateUserConf()
+    _userConf = await userConfApi.checkMissing()
   }
+
+  userConf = _userConf
+  svn.init(userConf)
 }
 
 async function getTemplate (templateName, offline = program.offline) {
@@ -175,7 +217,7 @@ async function getTemplate (templateName, offline = program.offline) {
   const template = path.resolve(TEMPLATE_DIR, templateName)
   try {
     if (!offline) {
-      await svn.export(svn.getSvnUrl(`pc-templates/${templateName}`), template, { force: true })
+      await svn.export(svn.getUrl(`pc-templates/${templateName}`), template, { force: true })
     }
 
     fs.accessSync(template)
@@ -203,8 +245,8 @@ async function getTemplateList (offline = program.offline) {
     try {
       let list
       [list, templateDesc] = await Promise.all([
-        svn.list(svn.getSvnUrl('pc-templates')),
-        svn.cat(svn.getSvnUrl('pc-templates/list.json'))
+        svn.list(svn.getUrl('pc-templates')),
+        svn.cat(svn.getUrl('pc-templates/list.json'))
       ])
       templateList = list.list.entry.map(f => f.name)
     } catch (error) {
