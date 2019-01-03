@@ -32,7 +32,9 @@ const TEMPLATE_DIR = path.join(homedir, '.pc-templates')
 const TEMPLATE_PREFIX = 'pcfe-'
 const TEMPLATE_REG = new RegExp(`^${TEMPLATE_PREFIX}(\\S+)`)
 
-let userConf
+let projectDir = process.cwd()
+
+let { userConf } = userConfApi.getUser()
 
 program.option('--offline', '离线模式')
 
@@ -51,7 +53,7 @@ program
     }
 
     try {
-      const projectDir = path.resolve(process.cwd(), projectName)
+      projectDir = path.resolve(process.cwd(), projectName)
       fs.accessSync(projectDir)
       const override = cmd.force || await choose(`${projectName} 目录已存在，是否覆盖？`, '覆盖', false)
 
@@ -135,7 +137,7 @@ program
   .option('--ignore-dir', '忽略文件夹路径关系，所有文件将在同一路径下')
   .action(async (filepath, options) => {
     try {
-      www1(filepath, userConf, options)
+      www1(filepath.length ? filepath : null, userConf, projectDir, options)
     } catch (error) {
       fail(error)
     }
