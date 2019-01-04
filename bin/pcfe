@@ -29,7 +29,7 @@ if (!semver.satisfies(process.version, pkg.engines.node)) {
 }
 
 const TEMPLATE_DIR = path.join(homedir, '.pc-templates')
-const TEMPLATE_PREFIX = 'pcfe-'
+const TEMPLATE_PREFIX = 'pc-'
 const TEMPLATE_REG = new RegExp(`^${TEMPLATE_PREFIX}(\\S+)`)
 
 let projectDir = process.cwd()
@@ -211,7 +211,7 @@ async function checkUserConf () {
   }
 
   userConf = _userConf
-  svn.init(userConf)
+  svn.init(Object.assign({}, userConf, { baseUrl: svn.getTplUrl() }))
 }
 
 async function getTemplate (templateName, offline = program.offline) {
@@ -219,7 +219,7 @@ async function getTemplate (templateName, offline = program.offline) {
   const template = path.resolve(TEMPLATE_DIR, templateName)
   try {
     if (!offline) {
-      await svn.export(svn.getUrl(`pc-templates/${templateName}`), template, { force: true })
+      await svn.export(svn.getTplUrl(`${templateName}`), template, { force: true })
     }
 
     fs.accessSync(template)
@@ -247,8 +247,8 @@ async function getTemplateList (offline = program.offline) {
     try {
       let list
       [list, templateDesc] = await Promise.all([
-        svn.list(svn.getUrl('pc-templates')),
-        svn.cat(svn.getUrl('pc-templates/list.json'))
+        svn.list(svn.getTplUrl()),
+        svn.cat(svn.getTplUrl('list.json'))
       ])
       templateList = list.list.entry.map(f => f.name)
     } catch (error) {
