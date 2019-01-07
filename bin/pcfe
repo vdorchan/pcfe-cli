@@ -68,39 +68,35 @@ program
     } catch (error) {
     }
 
-    let template
-    if (templateName) {
-      try {
-        template = await getTemplate(templateName)
-      } catch (error) {
-        fail(`获取 ${templateName} 模板异常，请确认模板名称或继续使用模板列表选择！`)
-      }
-    }
-
-    if (!template) {
-      const spinner = ora('正在获取模板列表').start()
+    if (!templateName) {
+      const spiner = ora('正在获取模板列表').start()
       try {
         const templateList = await getTemplateList()
-        spinner.stop()
-        const { templateName } = await inquirer.prompt([{
+        spiner.stop()
+        templateName = (await inquirer.prompt([{
           type: 'list',
           name: 'templateName',
           message: `正在创建 ${chalk.magenta(projectName)} 项目，请选择模板`,
           choices: templateList
-        }])
+        }])).templateName
 
-        template = path.join(TEMPLATE_DIR, templateName)
+        // template = path.join(TEMPLATE_DIR, templateName)
       } catch (error) {
-        spinner.fail('获取不到模板！')
+        spiner.fail('获取不到模板！')
         return console.log(error)
       }
     }
 
-    const definedOptions = cmd.options.map(o => o.long)
+    try {
+      const template = await getTemplate(templateName)
+      const definedOptions = cmd.options.map(o => o.long)
 
-    const _options = getArgOptions(program.rawArgs, definedOptions)
+      const _options = getArgOptions(program.rawArgs, definedOptions)
 
-    generate(projectName, template, userConf, _options)
+      generate(projectName, template, userConf, _options)
+    } catch (error) {
+      fail(`获取 ${templateName} 模板异常，请确认模板名称或继续使用模板列表选择！`)
+    }
   })
 
 program
@@ -110,18 +106,23 @@ program
   .option('-u --update', '查看模板，并更新离线模板')
   .action(async (options) => {
     await checkUserConf()
+    const spiner = ora().start()
 
-    const spinner = ora('正在获取模板列表').start()
+    spiner.text = '正在获取模板'
 
     let templateList
     try {
       templateList = await getTemplateList()
+      if (options.update) {
+        spiner.text = '正在更新离线模板'
+        await updateLocalTemplates(templateList)
+      }
     } catch (error) {
       fail(error)
       process.exit(1)
     }
 
-    spinner.stop()
+    spiner.stop()
 
     if (templateList) {
       console.log(chalk.green('模板列表：'))
@@ -145,14 +146,44 @@ program
 
 program
   .command('user')
-  .description('修改用户配置文件')
-  .on('--help', () => {
-    console.log('')
-    console.log('Command:')
-    console.log('  check              验证账号是否正确')
-    console.log('  check --svn        验证 svn 账号是否正确')
-    console.log('  reset              重设用户配置')
-    console.log('  set <key> <value>  设定某个参数为新的值')
+  .option('--set <key> <value>', '设置用户配置中指定参数的指')
+  .option('--get <key>', '获取用户配置中指定参数的指')
+  .option('-d --delete <key>', '删除用户配置中指定参数的指')
+  .option('-l --list', '展示用户配置')
+  .option('--check', '验证账号是否正确并保存至配置文件中')
+  .option('--check-svn', '验证 svn 账号是否正确并保存至配置文件中')
+  .option('--reset', '对用户配置进行重设')
+  .option('--no-store', '验证账号时不保存配置文件')
+  .action((...args) => {
+    const options = args.pop()
+
+    let _args = []
+
+    if (!options.store) {
+      _args = [false]
+    }
+    delete options.store
+
+    const funKeys = Object.keys(options).filter(k => !!userConfApi[k])
+
+    if (funKeys.length === 1) {
+      const funKey = funKeys[0]
+      const fun = userConfApi[funKey]
+
+      if (typeof fun === 'function') {
+        if (typeof options[funKey] === 'string') {
+          _args = [options[funKey]]
+        }
+
+        if (args.length) {
+          _args = _args.concat(args.slice(0, args.length - 1))
+        }
+
+        fun.apply(userConf, _args).catch(err => {
+          console.log(1, err)
+        })
+      }
+    }
   })
 
 program.on('--help', () => {
@@ -165,7 +196,7 @@ program.on('--help', () => {
 
 program.parse(process.argv)
 
-if (['user', 'u'].includes(program.args[0])) {
+/* if (['user', 'u'].includes(program.args[0])) {
   const { args } = program
   const rawArgs = program.rawArgs.slice(2).filter(a => !args.includes(a))
 
@@ -189,7 +220,7 @@ pcfe user reset                       对用户配置进行重设`)
   }
 
   fun.apply(userConf, [...args.slice(2), options]).catch(outHelp)
-}
+} */
 
 function getArgOptions (args, ignoreOptions = []) {
   const optionReg = /^--(\S+)/
@@ -227,6 +258,7 @@ async function getTemplate (templateName, offline = program.offline) {
     error.message = `获取 ${templateName} 模板异常` + error.message
     throw error
   }
+
   return template
 }
 
@@ -270,6 +302,11 @@ async function getTemplateList (offline = program.offline) {
   }))
 
   return templateList
+}
+
+async function updateLocalTemplates (templateList) {
+  const queue = templateList.map(t => getTemplate(t.value, false))
+  return Promise.all(queue)
 }
 
 if (!program.args.length) {
