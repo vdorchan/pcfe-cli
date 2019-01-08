@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const program = require('commander')
-const inquirer = require('inquirer')
 const homedir = require('os').homedir()
 const fs = require('fs')
 const path = require('path')
@@ -9,9 +8,6 @@ const rimraf = require('rimraf')
 const ora = require('ora')
 const { promisify: pify } = require('util')
 const chalk = require('chalk')
-const CFonts = require('cfonts')
-const generate = require('../lib/generate')
-const www1 = require('../lib/www1')
 const svn = require('../lib/svn')
 const userConfApi = require('../lib/userConfApi')
 
@@ -73,7 +69,7 @@ program
       try {
         const templateList = await getTemplateList()
         spiner.stop()
-        templateName = (await inquirer.prompt([{
+        templateName = (await require('inquirer').prompt([{
           type: 'list',
           name: 'templateName',
           message: `正在创建 ${chalk.magenta(projectName)} 项目，请选择模板`,
@@ -93,7 +89,7 @@ program
 
       const _options = getArgOptions(program.rawArgs, definedOptions)
 
-      generate(projectName, template, userConf, _options)
+      require('../lib/generate')(projectName, template, userConf, _options)
     } catch (error) {
       fail(`获取 ${templateName} 模板异常，请确认模板名称或继续使用模板列表选择！`)
     }
@@ -138,9 +134,35 @@ program
   .option('--ignore-dir', '忽略文件夹路径关系，所有文件将在同一路径下')
   .action(async (filepath, options) => {
     try {
-      www1(filepath.length ? filepath : null, userConf, projectDir, options)
+      require('../lib/www1')(filepath.length ? filepath : null, userConf, projectDir, options)
     } catch (error) {
       fail(error)
+    }
+  })
+
+program
+  .command('serve [baseDir]')
+  .option('-p --port', '指定要使用的端口')
+  .option('--open', '是否自动打开链接')
+  .action((baseDir, options) => {
+    try {
+      baseDir = baseDir || 'src'
+      fs.accessSync(baseDir)
+      const { port, open } = options
+      require('browser-sync').create().init({
+        watch: true,
+        injectChanges: true, // 插入更改
+        files: ['*.html', '*.css', '*.js'],
+        server: {
+          baseDir
+        },
+        logPrefix: 'pcfe serve',
+        open: typeof open === 'undefined' ? true : open,
+        port: port || '9000'
+      })
+    } catch (error) {
+      fail(error)
+      process.exit(1)
     }
   })
 
@@ -310,6 +332,6 @@ async function updateLocalTemplates (templateList) {
 }
 
 if (!program.args.length) {
-  CFonts.say('pcfe-cli', { colors: ['magenta'] })
+  require('cfonts').say('pcfe-cli', { colors: ['magenta'] })
   program.help()
 }
