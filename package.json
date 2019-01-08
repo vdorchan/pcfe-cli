@@ -2,12 +2,13 @@
   "name": "pcfe-cli",
   "version": "0.0.1",
   "description": "A CLI for pcgroup front-end developer to scaffolding a project.",
+  "author": "vdorchan <vdorchan@gmail.com>",
   "bin": {
     "pcfe": "bin/pcfe"
   },
-  "author": "vdorchan <vdorchan@gmail.com>",
   "dependencies": {
     "archiver": "^3.0.0",
+    "browser-sync": "^2.26.3",
     "cfonts": "^2.3.0",
     "chalk": "^2.4.1",
     "command-exists": "^1.2.8",
