@@ -17,7 +17,8 @@ const pkg = require('../package.json')
 const {
   fail,
   warn,
-  info
+  info,
+  timeLog
 } = require('../lib/logger')
 
 if (!semver.satisfies(process.version, pkg.engines.node)) {
@@ -75,8 +76,6 @@ program
           message: `正在创建 ${chalk.magenta(projectName)} 项目，请选择模板`,
           choices: templateList
         }])).templateName
-
-        // template = path.join(TEMPLATE_DIR, templateName)
       } catch (error) {
         spiner.fail('获取不到模板！')
         return console.log(error)
@@ -164,6 +163,62 @@ program
       fail(error)
       process.exit(1)
     }
+  })
+
+program
+  .command('build')
+  // .description('构建项目，压缩处理css、js、图片并输出到目标文件夹')
+  .option('--src [srcDir]', '开发目录')
+  .option('--dest [destDir]', '输出目录')
+  .action(options => {
+    const vfs = require('vinyl-fs')
+    const gulpCache = require('gulp-cache')
+    const log = (msg, task) => timeLog(`pcfe: ${msg} ${chalk.blue(task)}`)
+    const srcDir = options.src || 'src'
+    const destDir = options.dest || 'dist'
+    try {
+      fs.accessSync(srcDir)
+    } catch (error) {
+      fail(error)
+      process.exit(1)
+    }
+
+    vfs
+      .src(`${srcDir}/css/**/*.css`)
+      .on('finish', () => {
+        log('Starting', 'styles')
+      })
+      .pipe(require('gulp-clean-css')({
+        advanced: false,
+        keepSpecialComments: '*',
+        rebase: false
+      }))
+      .pipe(vfs.dest(`${destDir}/css`))
+      .on('end', () => {
+        log('Finished', 'styles')
+      })
+
+    vfs
+      .src(`${srcDir}/js/**/*.js`)
+      .on('finish', () => {
+        log('Starting', 'scripts')
+      })
+      .pipe(require('gulp-uglify')())
+      .pipe(vfs.dest(`${destDir}/js`))
+      .on('end', () => {
+        log('Finished', 'scripts')
+      })
+
+    vfs
+      .src(`${srcDir}/images/**/*.@(jpg|jpeg|gif|svg|jpg|png)`)
+      .on('finish', () => {
+        log('Starting', 'images')
+      })
+      .pipe(gulpCache(require('gulp-imagemin')([require('imagemin-pngquant')()], { progressive: true, interlaced: true, verbose: true })))
+      .pipe(vfs.dest(`${destDir}/images`))
+      .on('end', () => {
+        log('Finished', 'images')
+      })
   })
 
 program
