@@ -26,6 +26,7 @@ if (!semver.satisfies(process.version, pkg.engines.node)) {
 }
 
 const TEMPLATE_DIR = path.join(homedir, '.pc-templates')
+const TEMPLATE_DESC_DIR = path.join(TEMPLATE_DIR , 'list.json')
 const TEMPLATE_PREFIX = 'pc-'
 const TEMPLATE_REG = new RegExp(`^${TEMPLATE_PREFIX}(\\S+)`)
 
@@ -186,7 +187,7 @@ program
     vfs
       .src(`${srcDir}/css/**/*.css`)
       .on('finish', () => {
-        log('Starting', 'styles')
+        log('Starting', 'compress css')
       })
       .pipe(require('gulp-clean-css')({
         advanced: false,
@@ -195,29 +196,39 @@ program
       }))
       .pipe(vfs.dest(`${destDir}/css`))
       .on('end', () => {
-        log('Finished', 'styles')
+        log('Finished', 'compress css')
       })
 
     vfs
       .src(`${srcDir}/js/**/*.js`)
       .on('finish', () => {
-        log('Starting', 'scripts')
+        log('Starting', 'compress js')
       })
       .pipe(require('gulp-uglify')())
       .pipe(vfs.dest(`${destDir}/js`))
       .on('end', () => {
-        log('Finished', 'scripts')
+        log('Finished', 'compress js')
       })
 
     vfs
       .src(`${srcDir}/images/**/*.@(jpg|jpeg|gif|svg|jpg|png)`)
       .on('finish', () => {
-        log('Starting', 'images')
+        log('Starting', 'compress images')
       })
       .pipe(gulpCache(require('gulp-imagemin')([require('imagemin-pngquant')()], { progressive: true, interlaced: true, verbose: true })))
       .pipe(vfs.dest(`${destDir}/images`))
       .on('end', () => {
-        log('Finished', 'images')
+        log('Finished', 'compress images')
+      })
+
+    vfs
+      .src(['src/**/*', '!src/@(css|js|image)/**/*'])
+      .on('finish', () => {
+        log('Starting', 'move other files')
+      })
+      .pipe(vfs.dest(destDir))
+      .on('end', () => {
+        log('Finished', 'move other files')
       })
   })
 
@@ -322,6 +333,16 @@ async function checkUserConf () {
   svn.init(Object.assign({}, userConf, { baseUrl: svn.getTplUrl() }))
 }
 
+async function getTemplateDesc (offline = program.offline) {
+  if (!offline) {
+    try {
+      await svn.export(svn.getTplUrl('list.json'), TEMPLATE_DESC_DIR, { force: true })
+    } catch (error) {
+    }
+  }
+  return pify(fs.readFile)(TEMPLATE_DESC_DIR, 'utf-8')
+}
+
 async function getTemplate (templateName, offline = program.offline) {
   if (!TEMPLATE_REG.test(templateName)) templateName = TEMPLATE_PREFIX + templateName
   const template = path.resolve(TEMPLATE_DIR, templateName)
@@ -346,7 +367,7 @@ async function getTemplateList (offline = program.offline) {
       // fs.accessSync(TEMPLATE_DIR)
       [templateList, templateDesc] = await Promise.all([
         pify(fs.readdir)(TEMPLATE_DIR),
-        pify(fs.readFile)(path.join(TEMPLATE_DIR, 'list.json'), 'utf-8')
+        getTemplateDesc()
       ])
     } catch (error) {
       error.message = '获取本地模板出错，请使用线上模式或尝试更新模板\n' + error.message
@@ -357,7 +378,7 @@ async function getTemplateList (offline = program.offline) {
       let list
       [list, templateDesc] = await Promise.all([
         svn.list(svn.getTplUrl()),
-        svn.cat(svn.getTplUrl('list.json'))
+        getTemplateDesc()
       ])
       templateList = list.list.entry.map(f => f.name)
     } catch (error) {
