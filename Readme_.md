@@ -31,7 +31,15 @@
 
 该工具基于node，并且异步控制方式使用了 async，所以请确保已具备较新的node环境（[npm-image]）
 
-然后使用 npm 或 cnpm 或 yarn 全局安装
+工具内 svn 的相关操作需要借助于 svn 的命令行工具，mac自带，windows 则需要先安装 svn 命令行工具。
+
+windows 用户在以下页面内下载安装
+
+[https://sourceforge.net/projects/win32svn/](https://sourceforge.net/projects/win32svn/)
+
+然后将软件目录下的 bin 目录，加入环境变量
+
+使用 npm 或 cnpm 或 yarn 全局安装
 
 ```bash
 npm install -g pcfe-cli

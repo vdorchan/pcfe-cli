@@ -1,6 +1,6 @@
 {
   "name": "pcfe-cli",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "description": "A CLI for pcgroup front-end developer to scaffolding a project.",
   "author": "vdorchan <vdorchan@gmail.com>",
   "bin": {
