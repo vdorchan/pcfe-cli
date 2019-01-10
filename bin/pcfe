@@ -26,9 +26,10 @@ if (!semver.satisfies(process.version, pkg.engines.node)) {
 }
 
 const TEMPLATE_DIR = path.join(homedir, '.pc-templates')
-const TEMPLATE_DESC_DIR = path.join(TEMPLATE_DIR , 'list.json')
+const TEMPLATE_DESC_DIR = path.join(TEMPLATE_DIR, 'list.json')
 const TEMPLATE_PREFIX = 'pc-'
 const TEMPLATE_REG = new RegExp(`^${TEMPLATE_PREFIX}(\\S+)`)
+const PC_CONFIG = 'pc.config.js'
 
 let projectDir = process.cwd()
 
@@ -39,6 +40,7 @@ program.option('--offline', '离线模式')
 program
   .version(pkg.version, '-v --version')
   .command('create <projectName> [templateName]')
+  .description('通过拉取模板创建项目')
   .option('--offline', '使用离线模板')
   .option('-f --force', '覆盖已存在的项目目录')
   .allowUnknownOption()
@@ -49,6 +51,8 @@ program
       fail('缺少项目名')
       process.exit(1)
     }
+
+    ouputCliInfo(true)
 
     try {
       projectDir = path.resolve(process.cwd(), projectName)
@@ -74,7 +78,7 @@ program
         templateName = (await require('inquirer').prompt([{
           type: 'list',
           name: 'templateName',
-          message: `正在创建 ${chalk.magenta(projectName)} 项目，请选择模板`,
+          message: `正在创建 ${chalk.yellow(projectName)} 项目，请选择模板`,
           choices: templateList
         }])).templateName
       } catch (error) {
@@ -128,7 +132,7 @@ program
 
 program
   .command('www1 [file...]')
-  .description('上传到www1')
+  .description('上传到www1服务器')
   .option('--ignore-config', '忽略配置文件')
   .option('--ignore-cwd', '忽略配置文件中设置的当前工作路径')
   .option('--ignore-dir', '忽略文件夹路径关系，所有文件将在同一路径下')
@@ -142,13 +146,21 @@ program
 
 program
   .command('serve [baseDir]')
-  .option('-p --port', '指定要使用的端口')
-  .option('--open', '是否自动打开链接')
+  .description('启动一个开发服务器')
+  .option('--open', '在服务器启动时打开浏览器')
+  .option('-p --port', '指定要使用的端口(默认值：9000)')
+  .option('--host', '指定 host (默认值：0.0.0.0)')
+  .option('--https', '使用 https (默认值：false)')
   .action((baseDir, options) => {
+    baseDir = baseDir || '.'
     try {
-      baseDir = baseDir || 'src'
+      const paths = require(path.resolve(process.cwd(), PC_CONFIG)).paths
+      baseDir = paths.src
+    } catch (error) {
+    }
+    try {
       fs.accessSync(baseDir)
-      const { port, open } = options
+      const { port, open, host, https } = options
       require('browser-sync').create().init({
         watch: true,
         injectChanges: true, // 插入更改
@@ -157,8 +169,10 @@ program
           baseDir
         },
         logPrefix: 'pcfe serve',
-        open: typeof open === 'undefined' ? true : open,
-        port: port || '9000'
+        open,
+        port: port || '9000',
+        https,
+        host
       })
     } catch (error) {
       fail(error)
@@ -168,7 +182,7 @@ program
 
 program
   .command('build')
-  // .description('构建项目，压缩处理css、js、图片并输出到目标文件夹')
+  .description('构建项目，压缩处理css、js、图片并输出到目标文件夹')
   .option('--src [srcDir]', '开发目录')
   .option('--dest [destDir]', '输出目录')
   .action(options => {
@@ -274,13 +288,13 @@ program
     }
   })
 
-program.on('--help', () => {
-  console.log('')
-  console.log('Examples:')
-  console.log('')
-  console.log('  $ custom-help --help')
-  console.log('  $ custom-help -h')
-})
+// program.on('--help', () => {
+//   console.log('')
+//   console.log('Examples:')
+//   console.log('')
+//   console.log('  $ custom-help --help')
+//   console.log('  $ custom-help -h')
+// })
 
 program.parse(process.argv)
 
@@ -310,6 +324,11 @@ pcfe user reset                       对用户配置进行重设`)
   fun.apply(userConf, [...args.slice(2), options]).catch(outHelp)
 } */
 
+function ouputCliInfo (clear) {
+  clear && console.clear()
+  return console.log(chalk.magenta(`${pkg.name} v${pkg.version}`))
+}
+
 function getArgOptions (args, ignoreOptions = []) {
   const optionReg = /^--(\S+)/
   const options = {}
@@ -325,6 +344,7 @@ function getArgOptions (args, ignoreOptions = []) {
 async function checkUserConf () {
   let { userConf: _userConf, isComplete } = userConfApi.getUser()
   if (!isComplete) {
+    ouputCliInfo(true)
     info('初次使用或用户信息不完整，请完善用户信息！')
     _userConf = await userConfApi.checkMissing()
   }
@@ -362,9 +382,13 @@ async function getTemplate (templateName, offline = program.offline) {
 
 async function getTemplateList (offline = program.offline) {
   let templateList, templateDesc
+  try {
+    fs.accessSync(TEMPLATE_DIR)
+  } catch (error) {
+    fs.mkdirSync(TEMPLATE_DIR)
+  }
   if (offline) {
     try {
-      // fs.accessSync(TEMPLATE_DIR)
       [templateList, templateDesc] = await Promise.all([
         pify(fs.readdir)(TEMPLATE_DIR),
         getTemplateDesc()
@@ -387,15 +411,16 @@ async function getTemplateList (offline = program.offline) {
     }
   }
 
-  templateList = templateList.filter(t => TEMPLATE_REG.test(t))
   try {
     templateDesc = JSON.parse(templateDesc)
   } catch (error) {
     templateDesc = {}
   }
 
+  templateList = templateList.filter(t => TEMPLATE_REG.test(t) && typeof templateDesc[t] === 'string')
+
   templateList = templateList.map(t => ({
-    name: t.replace(TEMPLATE_REG, '$1') + (templateDesc[t] ? ` ${chalk.gray(templateDesc[t])}` : ''),
+    name: `${t.replace(TEMPLATE_REG, '$1')} ${chalk.gray(templateDesc[t])}`,
     value: t
   }))
 
