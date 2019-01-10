@@ -29,7 +29,7 @@
 
 ## 安装
 
-该工具基于node，并且异步控制方式使用了 async，所以请确保已具备较新的node环境（[npm-image]）
+该工具基于node，并且异步控制方式使用了 async，所以请确保已具备较新的node环境（![NODE version][node-image]）
 
 工具内 svn 的相关操作需要借助于 svn 的命令行工具，mac自带，windows 则需要先安装 svn 命令行工具。
 
