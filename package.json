@@ -1,10 +1,18 @@
 {
   "name": "pcfe-cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A CLI for pcgroup front-end developer to scaffolding a project.",
   "author": "vdorchan <vdorchan@gmail.com>",
   "bin": {
     "pcfe": "bin/pcfe"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vdorchan/pcfe-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/vdorchan/pcfe-cli/issues"
   },
   "dependencies": {
     "archiver": "^3.0.0",
