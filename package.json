@@ -1,6 +1,6 @@
 {
   "name": "pcfe-cli",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A CLI for pcgroup front-end developer to scaffolding a project.",
   "author": "vdorchan <vdorchan@gmail.com>",
   "bin": {
@@ -36,7 +36,7 @@
     "mem-fs-editor": "^5.1.0",
     "node-svn-ultimate": "^1.1.0",
     "ora": "^3.0.0",
-    "pc-www1": "^0.1.1",
+    "pc-www1": "^0.1.2",
     "recursive-readdir": "^2.2.2",
     "rimraf": "^2.6.2",
     "run-async": "^2.3.0",

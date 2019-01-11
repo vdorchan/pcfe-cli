@@ -3712,12 +3712,14 @@ path-type@^3.0.0:
   dependencies:
     pify "^3.0.0"
 
-pc-www1@^0.1.1:
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/pc-www1/-/pc-www1-0.1.1.tgz#a3afc2a40cbcfc0797dc55e442550d7eaacfcdee"
+pc-www1@^0.1.2:
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/pc-www1/-/pc-www1-0.1.2.tgz#be071218dcef56927b3c89ea9dbf59831729f4f5"
+  integrity sha512-I0SgpCmu/lUoYHQ8O9BGD1qMnUBITAAaN8FypKMexjcwlh3rBn1ih9mxkSo9qWUfv7RFEa7RQ1wjnesqNeXBNw==
   dependencies:
     form-data "^2.3.3"
     got "^9.3.2"
+    iconv-lite "^0.4.24"
 
 pend@~1.2.0:
   version "1.2.0"

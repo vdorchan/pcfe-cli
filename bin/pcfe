@@ -152,11 +152,13 @@ program
   .option('--host', '指定 host (默认值：0.0.0.0)')
   .option('--https', '使用 https (默认值：false)')
   .action((baseDir, options) => {
-    baseDir = baseDir || '.'
-    try {
-      const paths = require(path.resolve(process.cwd(), PC_CONFIG)).paths
-      baseDir = paths.src
-    } catch (error) {
+    if (typeof baseDir !== 'string') {
+      try {
+        const paths = require(path.resolve(process.cwd(), PC_CONFIG)).paths
+        baseDir = paths.src
+      } catch (error) {
+        baseDir = '.'
+      }
     }
     try {
       fs.accessSync(baseDir)
@@ -326,7 +328,9 @@ pcfe user reset                       对用户配置进行重设`)
 
 function ouputCliInfo (clear) {
   clear && console.clear()
-  return console.log(chalk.magenta(`${pkg.name} v${pkg.version}`))
+  let msg = chalk.magenta(`${pkg.name} v${pkg.version}`)
+  if (program.offline) msg += chalk.gray(' 你正在使用离线模式')
+  return console.log(msg)
 }
 
 function getArgOptions (args, ignoreOptions = []) {
@@ -350,7 +354,15 @@ async function checkUserConf () {
   }
 
   userConf = _userConf
-  svn.init(Object.assign({}, userConf, { baseUrl: svn.getTplUrl() }))
+
+  try {
+    svn.init(Object.assign({}, userConf, { baseUrl: svn.getTplUrl() }))
+  } catch (error) {
+    if (!program.offline) {
+      fail(error)
+      process.exit(1)
+    }
+  }
 }
 
 async function getTemplateDesc (offline = program.offline) {
