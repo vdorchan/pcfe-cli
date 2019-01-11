@@ -59,6 +59,19 @@ pcfe --version
 pcfe -v
 ```
 
+## 目录
+
+* [功能一览](#功能一览)
+* [安装](#安装)
+* [创建一个项目](#创建一个项目)
+* [用户信息](#用户信息)
+* [项目配置文件](#项目配置文件)
+* [启动一个开发服务器](#启动一个开发服务器)
+* [构建一个用于上线的包](#构建一个用于上线的包)
+* [上传项目](#上传项目)
+* [离线模式](#离线模式)
+* [zt-gulp模板的使用](#zt-gulp模板的使用)
+
 ## 创建一个项目
 
 ### pcfe create
@@ -307,7 +320,7 @@ pcfe create 190101-bmw --offline
 pcfe list --offline
 ```
 
-## zt-gulp 模板的使用
+## zt-gulp模板的使用
 
 这个模板将创建以 `gulp` 作为构建工具的脚手架，在使用 `gulp` 做构建处理的时候，需要安装很多项目依赖，占用时间会比较多。
 
@@ -338,5 +351,5 @@ pcfe create 190101-bmw zt-gulp
 ```
 
 然后进入到这里项目就创建完毕了，按照提示进行开发即可。
-![pcfe www1](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp2.png?)
+![pcfe www1](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp3.png?)
 注意，这些项目单独拿到其它地方，使用 `npm install` 也是可以正常运行的。
