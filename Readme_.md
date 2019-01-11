@@ -12,7 +12,7 @@
 [![NPM version][npm-image]][npm-url]
 [![NODE version][node-image]][node-url]
 
-## [目录](#目录)
+## 目录
 
 * [安装](#安装)
 * [创建一个项目](#创建一个项目)
