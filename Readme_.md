@@ -72,8 +72,14 @@ pcfe create 190101-bmw
 然后你会被提示选取一个专题模板，选择合适的模板然后继续进行操作
 ![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create.png)
 
-选择完相应的模版之后，通过交互式完成一些设定。
+选择完相应的模板之后，通过交互式完成一些设定。
 ![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create2.png)
+
+或者你可以直接指定你要用的模板，下列命令将使用 `zt-gulp` 创建 `190101-bmw` 项目
+
+```bash
+pcfe create 190101-bmw zt
+```
 
 `pcfe create` 的一些用法可以通过以下命令查看
 
@@ -112,7 +118,7 @@ pcfe create --help
 修改用户名
 
 ```bash
-pcfe user --set zhangsan lisi
+pcfe user --set username lisi
 ```
 
 使用 `pcfe user --help` 查看更多帮助
@@ -251,7 +257,7 @@ pcfe www1 js css
 
 ```bash
 # 上传 js 和 css 文件夹
-pcfe www1 js css
+pcfe www1 ~/Documents/www/190110/js ~/Documents/www/style.css
 ```
 
 ```bash
@@ -304,3 +310,40 @@ pcfe create 190101-bmw --offline
 ```bash
 pcfe list --offline
 ```
+
+## zt-gulp 模板的使用
+
+这个模板将创建以 `gulp` 作为构建工具的脚手架，在使用 `gulp` 做构建处理的时候，需要安装很多项目依赖，占用时间会比较多。
+
+于是这个在使用这个模板在设计的时候，可以创建一个总目录用于存放依赖，各个项目将放置于这个目录之下。
+
+这些项目可以不用单独安装依赖，根据 npm 的特性，它会向上寻找依赖，然后在总目录找到依赖。
+
+首先创建一个 `pcgroup` 总目录
+
+```bash
+pcfe create pcgroup zt-gulp --init
+```
+
+以上命令中，`pcgroup` 为目录名，`zt-gulp` 为模板名，`init` 作为选项参数将会传给 `zt-gulp`，模板拿到这个参数，便知道你是在创建总目录。
+
+然后你可以选择马上安装依赖，或取消，稍后再使用 `npm install` 或 `cnpm install` 安装
+
+![zt gulp](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp.png)
+
+![zt gulp](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp2.png)
+
+安装完依赖后，根据提示操作
+
+```bash
+# 进入 pcgroup/zt 目录
+cd pcgroup/zt
+
+# 创建 190101-bmw 项目
+pcfe create 190101-bmw zt-gulp
+```
+
+然后进入到这里项目就创建完毕了，按照提示进行开发即可。
+
+另外，这些项目单独拿到其它地方，使用 npm install 也是可以正常运行的。
+![pcfe www1](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp2.png)
