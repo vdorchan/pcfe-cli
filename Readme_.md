@@ -323,7 +323,7 @@ pcfe list --offline
 
 这个模板将创建以 `gulp` 作为构建工具的脚手架，在使用 `gulp` 做构建处理的时候，需要安装很多项目依赖，占用时间会比较多。
 
-于是这个在使用这个模板在设计的时候，可以创建一个总目录用于存放依赖，各个项目将放置于这个目录之下。
+于是这个模板在设计的时候，允许用户创建一个总目录用于存放依赖，各个项目将放置于这个目录之下。
 
 这些项目可以不用单独安装依赖，根据 npm 的特性，它会向上寻找依赖，然后在总目录找到依赖。
 
@@ -334,12 +334,12 @@ pcfe list --offline
 pcfe create pcgroup zt-gulp --init
 ```
 
-然后你可以选择马上安装依赖，或取消，稍后再使用 `npm install` 或 `cnpm install` 安装
+你可以选择马上安装依赖，也可以取消，稍后再使用 `npm install` 或 `cnpm install` 安装
 ![zt gulp](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp.png?)
 到这里，总目录创建完成，并完成安装依赖。
 ![zt gulp](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp2.png?)
 
-然后，根据提示操作
+接着根据提示操作
 
 ```bash
 # 进入 pcgroup/zt 目录
@@ -349,6 +349,6 @@ cd pcgroup/zt
 pcfe create 190101-bmw zt-gulp
 ```
 
-然后进入到这里项目就创建完毕了，按照提示进行开发即可。
+进入到这里项目就创建完毕了，按照提示进行开发即可。
 ![pcfe www1](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp3.png?)
 注意，这些项目单独拿到其它地方，使用 `npm install` 也是可以正常运行的。
