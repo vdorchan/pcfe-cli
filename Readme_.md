@@ -70,9 +70,9 @@ pcfe create 190101-bmw
 ```
 
 然后你会被提示选取一个专题模板，选择合适的模板然后继续进行操作
-![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create.png)
+![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create.png?)
 选择完相应的模板之后，通过交互式完成一些设定。
-![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create2.png)
+![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create2.png?)
 
 或者你可以直接指定你要用的模板，下列命令将使用 `zt-gulp` 创建 `190101-bmw` 项目
 
@@ -102,9 +102,9 @@ pcfe create --help
 
 为了方便开发，以及上传需要用户信息。所以在第一次使用的时候会询问 svn 信息。
 
-![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create3.png)
+![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create3.png?)
 在完善用户账号的时候会进行验证。
-![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create4.png)
+![pcfe create](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-create4.png?)
 用户信息的配置文件将保存在用户目录下的 `.pcuserconf` 文件中。
 
 ### pcfe user
@@ -238,7 +238,7 @@ module.exports = {
 ```
 
 上传文件时，交互式操作方便，你可以选择性上传文件
-![pcfe www1](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-www1.png)
+![pcfe www1](https://www1.pconline.com.cn/test/pcfeCli/images/pcfe-www1.png?)
 
 ### 其它使用方式
 
@@ -323,9 +323,9 @@ pcfe create pcgroup zt-gulp --init
 ```
 
 然后你可以选择马上安装依赖，或取消，稍后再使用 `npm install` 或 `cnpm install` 安装
-![zt gulp](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp.png)
+![zt gulp](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp.png?)
 到这里，总目录创建完成，并完成安装依赖。
-![zt gulp](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp2.png)
+![zt gulp](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp2.png?)
 
 然后，根据提示操作
 
@@ -338,5 +338,5 @@ pcfe create 190101-bmw zt-gulp
 ```
 
 然后进入到这里项目就创建完毕了，按照提示进行开发即可。
-![pcfe www1](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp2.png)
+![pcfe www1](https://www1.pconline.com.cn/test/pcfeCli/images/zt-gulp2.png?)
 注意，这些项目单独拿到其它地方，使用 `npm install` 也是可以正常运行的。
