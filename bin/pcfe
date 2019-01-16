@@ -187,6 +187,7 @@ program
   .description('构建项目，压缩处理css、js、图片并输出到目标文件夹')
   .option('--src [srcDir]', '开发目录')
   .option('--dest [destDir]', '输出目录')
+  .option('--clear-cache', '构建前清除缓存')
   .action(options => {
     const vfs = require('vinyl-fs')
     const gulpCache = require('gulp-cache')
@@ -198,6 +199,10 @@ program
     } catch (error) {
       fail(error)
       process.exit(1)
+    }
+
+    if (options.clearCache) {
+      gulpCache.clearAll()
     }
 
     vfs
@@ -245,6 +250,33 @@ program
       .pipe(vfs.dest(destDir))
       .on('end', () => {
         log('Finished', 'move other files')
+      })
+  })
+
+program
+  .command('imagemin')
+  .description('压缩图片资源输出')
+  .option('--dest [dir]', '指定压缩图片输出路径，默认 compressed')
+  .option('--clear-cache', '清除缓存')
+  .action(options => {
+    const vfs = require('vinyl-fs')
+    const gulpCache = require('gulp-cache')
+    const log = (msg, task) => timeLog(`pcfe: ${msg} ${chalk.blue(task)}`)
+    const destDir = options.dest || 'compressed'
+
+    if (options.clearCache) {
+      gulpCache.clearAll()
+    }
+
+    vfs
+      .src([`**/*.@(jpg|jpeg|gif|svg|jpg|png)`, `!${destDir}/**/*`])
+      .on('finish', () => {
+        log('Starting', 'compress images')
+      })
+      .pipe(gulpCache(require('gulp-imagemin')([require('imagemin-pngquant')()], { progressive: true, interlaced: true, verbose: true })))
+      .pipe(vfs.dest(`${destDir}`))
+      .on('end', () => {
+        log('Finished', `compress images and the compressed images are outputed to \`${destDir}\``)
       })
   })
 
