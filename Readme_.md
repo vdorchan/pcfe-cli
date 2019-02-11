@@ -139,10 +139,9 @@ pcfe user --set username lisi
   --get <key>          获取用户配置中指定参数的指
   -d --delete <key>    删除用户配置中指定参数的指
   -l --list            展示用户配置
-  --check              验证账号是否正确并保存至配置文件中
-  --check-svn          验证 svn 账号是否正确并保存至配置文件中
+  --login              用户登录，成功后将保存账号密码至配置文件中
+  --login-svn          svn 用户登录，成功后将保存账号密码至配置文件中
   --reset              对用户配置进行重设
-  --no-store           验证账号时不保存配置文件
 ```
 
 ## [项目配置文件](#项目配置文件)

@@ -286,19 +286,18 @@ program
   .option('--get <key>', '获取用户配置中指定参数的指')
   .option('-d --delete <key>', '删除用户配置中指定参数的指')
   .option('-l --list', '展示用户配置')
-  .option('--check', '验证账号是否正确并保存至配置文件中')
-  .option('--check-svn', '验证 svn 账号是否正确并保存至配置文件中')
+  .option('--login', '用户登录，成功后将保存账号密码至配置文件中')
+  .option('--login-svn', 'svn 用户登录，成功后将保存账号密码至配置文件中')
   .option('--reset', '对用户配置进行重设')
-  .option('--no-store', '验证账号时不保存配置文件')
   .action((...args) => {
     const options = args.pop()
 
     let _args = []
 
-    if (!options.store) {
+    /* if (!options.store) {
       _args = [false]
     }
-    delete options.store
+    delete options.store */
 
     const funKeys = Object.keys(options).filter(k => !!userConfApi[k])
 
@@ -312,11 +311,11 @@ program
         }
 
         if (args.length) {
-          _args = _args.concat(args.slice(0, args.length - 1))
+          _args = _args.concat(args)
         }
 
         fun.apply(userConf, _args).catch(err => {
-          console.log(1, err)
+          fail(err.message)
         })
       }
     }
