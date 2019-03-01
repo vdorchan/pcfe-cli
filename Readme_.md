@@ -39,6 +39,10 @@
 
 - [x] 方便强大的 www1 上传方式
 
+## ChangeLog
+
+更新日志请见[ChangeLog](CHANGELOG.md)
+
 ## [安装](#安装)
 
 该工具基于node，并且异步控制方式使用了 async，所以请确保已具备较新的node环境（![NODE version][node-image]）
