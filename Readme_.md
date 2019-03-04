@@ -3,6 +3,10 @@
 > pcfe-cli 旨在帮助人们快速创建项目，通过预设的模板和交互，生成项目相应的目录和代码。
 >
 > 同时还具备开发环境和项目上线的功能。
+>
+> 分离生成器和模板，自动读取 svn 上最新的模板。
+>
+> 因此，你或者其他人在 svn 上对模板任何的修改添加，都能即时体验到。
 
 [npm-url]: https://www.npmjs.com/package/pcfe-cli
 [npm-image]: https://img.shields.io/npm/v/pcfe-cli.svg
