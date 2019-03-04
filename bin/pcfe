@@ -188,9 +188,11 @@ program
   .option('--src [srcDir]', '开发目录')
   .option('--dest [destDir]', '输出目录')
   .option('--clear-cache', '构建前清除缓存')
+  .option('--no-filename-hash', '禁止为文件名添加hash后缀（默认开启，更好控制缓存）')
   .action(async options => {
     const vfs = require('vinyl-fs')
     const gulpCache = require('gulp-cache')
+    const gulpIf = require('gulp-if')
     const rev = require('gulp-rev')
     const revCollector = require('gulp-rev-collector')
     const log = (msg, task) => timeLog(`pcfe: ${msg} ${chalk.blue(task)}`)
@@ -208,13 +210,15 @@ program
       gulpCache.clearAll()
     }
 
+    const { filenameHash } = options
+
     function compressCss () {
       return new Promise((resolve, reject) => {
         vfs.src(`${srcDir}/css/**/*.css`)
           .on('finish', () => {
             log('Starting', 'compress css')
           })
-          .pipe(rev())
+          .pipe(gulpIf(filenameHash, rev()))
           .pipe(require('gulp-clean-css')({
             advanced: false,
             keepSpecialComments: '*',
@@ -236,7 +240,7 @@ program
           .on('finish', () => {
             log('Starting', 'compress js')
           })
-          .pipe(rev())
+          .pipe(gulpIf(filenameHash, rev()))
           .pipe(require('gulp-uglify')())
           .pipe(vfs.dest(`${destDir}/js`))
           .pipe(rev.manifest())
@@ -255,7 +259,7 @@ program
           .on('finish', () => {
             log('Starting', 'compress images')
           })
-          .pipe(rev())
+          .pipe(gulpIf(filenameHash, rev()))
           .pipe(gulpCache(imagemin([
             imagemin.gifsicle({interlaced: true}),
             require('imagemin-mozjpeg')({
@@ -279,17 +283,20 @@ program
       })
     }
 
-    await pify(rimraf)(destDir)
+    await pify(rimraf)(`@(${destDir}|${revDir})`)
     await compressImage()
     await Promise.all([compressCss(), compressJs()])
 
-    vfs.src(['${revDir}/**/rev-manifest.json', `${destDir}/**/*.css`, 'src/**/*', '!src/@(css|js|images)/**/*'])
+    vfs.src([`${revDir}/**/rev-manifest.json`, `${destDir}/**/*.@(css|js)`, 'src/**/*', '!src/@(css|js|images)/**/*'])
       .pipe(revCollector())
       .on('finish', () => {
         log('Starting', 'move other files')
       })
       .pipe(vfs.dest(destDir))
-      .on('end', () => {
+      .on('end', async () => {
+        if (!filenameHash) {
+          await pify(rimraf)(revDir)
+        }
         log('Finished', 'move other files')
       })
   })
