@@ -22,6 +22,7 @@
 * [构建一个用于上线的包](#构建一个用于上线的包)
 * [上传项目](#上传项目)
 * [离线模式](#离线模式)
+* [批量压缩图片](#批量压缩图片)
 * [zt-gulp模板的使用](#zt-gulp模板的使用)
 
 ## [功能一览](#功能一览)
@@ -34,10 +35,15 @@
 
 - [x] 可以启动一个开发服务器，支持热更新
 - [x] 构建生产环境可用的包
+- [ ] 为文件名添加 md5 后缀控制缓存
 
 ### 项目上线
 
 - [x] 方便强大的 www1 上传方式
+
+### 便捷功能
+
+- [x] 批量压缩图片
 
 ## ChangeLog
 
@@ -208,7 +214,7 @@ Options:
 
 ### pcfe build
 
-使用以下命令，会将开发目录（默认 `src`）下的文件进行 js/css/图片压缩，然后输出到 `dist/` 目录。
+使用以下命令，会将开发目录（默认 `src`）下的文件进行 js/css/图片压缩，然后输出到 `dist` 目录。
 
 ```bash
 pcfe build
@@ -225,6 +231,20 @@ module.exports = {
   }
   // ...
 }
+```
+
+使用 `pcfe build --help` 查看更多帮助
+
+```bash
+用法: build [options]
+
+构建项目，压缩处理css、js、图片并输出到目标文件夹
+
+Options:
+  --src [srcDir]      开发目录
+  --dest [destDir]    输出目录
+  --clear-cache       构建前清除缓存
+  --no-filename-hash  禁止为文件名添加hash后缀以控制缓存（默认开启）
 ```
 
 ## [上传项目](#上传项目)
@@ -321,6 +341,14 @@ pcfe create 190101-bmw --offline
 ```bash
 pcfe list --offline
 ```
+
+## [批量压缩图片](#批量压缩图片)
+
+```bash
+pcfe imagemin
+```
+
+todo
 
 ## [zt-gulp模板的使用](#zt-gulp模板的使用)
 
