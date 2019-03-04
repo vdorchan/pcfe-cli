@@ -1,5 +1,10 @@
 # ChangeLog
 
+## 0.1.2
+
+* 静态资源增加md5戳
+* imagemin 图片压缩处理增加jpg、gif、svg等插件使用
+
 ## 0.1.1
 
 * fix: 用户配置 set 报错
