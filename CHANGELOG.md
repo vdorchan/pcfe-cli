@@ -2,8 +2,8 @@
 
 ## 0.1.2
 
-* feat: 静态资源增加md5戳
-* perf: imagemin 图片压缩处理增加jpg、gif、svg等插件使用
+* feat: 构建流程会生成md5戳，并添加到静态资源文件名，以控制缓存
+* perf: 使用 imagemin 插件压缩图片时增加jpg、gif、svg等插件使用
 
 ## 0.1.1
 
@@ -11,7 +11,7 @@
 
 ## 0.1.0
 
-* feat: 增加 imagemin 图片压缩
+* feat: 增加 imagemin 命令用来进行图片压缩
 
 ## 0.0.6
 
