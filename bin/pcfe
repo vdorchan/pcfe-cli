@@ -241,7 +241,7 @@ program
             log('Starting', 'compress js')
           })
           .pipe(gulpIf(filenameHash, rev()))
-          .pipe(require('gulp-uglify')())
+          .pipe(require('gulp-terser')())
           .pipe(vfs.dest(`${destDir}/js`))
           .pipe(rev.manifest())
           .pipe(vfs.dest(`${revDir}/js`))
