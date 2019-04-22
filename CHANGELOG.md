@@ -2,7 +2,7 @@
 
 ## 0.1.3
 
-* perf: 使用 [gulp-terser](https://www.npmjs.com/package/gulp-terser) 代替 [gulp-uglify](https://www.npmjs.com/package/gulp-uglify)，支持构建 ES6
+* perf: 构建项目使用 [gulp-terser](https://www.npmjs.com/package/gulp-terser) 代替 [gulp-uglify](https://www.npmjs.com/package/gulp-uglify)，支持压缩 ES6 代码
 
 ## 0.1.2
 
