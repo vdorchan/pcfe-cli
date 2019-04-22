@@ -284,8 +284,8 @@ program
     }
 
     await pify(rimraf)(`@(${destDir}|${revDir})`)
-    await compressImage()
-    await Promise.all([compressCss(), compressJs()])
+
+    await Promise.all([compressCss(), compressJs(), compressImage()])
 
     vfs.src([`${revDir}/**/rev-manifest.json`, `${destDir}/**/*.@(css|js)`, 'src/**/*', '!src/@(css|js|images)/**/*'])
       .pipe(revCollector())
