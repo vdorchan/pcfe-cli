@@ -1,5 +1,9 @@
 # ChangeLog
 
+## 0.1.3
+
+* perf: 使用 [gulp-terser](https://www.npmjs.com/package/gulp-terser) 代替 [gulp-uglify](https://www.npmjs.com/package/gulp-uglify)，支持构建 ES6
+
 ## 0.1.2
 
 * feat: 构建流程会生成md5戳，并添加到静态资源文件名，以控制缓存
